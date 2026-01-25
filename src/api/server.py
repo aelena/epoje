@@ -9,7 +9,15 @@ from sanic.request import Request
 from sanic.response import JSONResponse
 from sanic_cors import CORS
 
-from database import init_db, create_session, log_interaction
+from database import (
+    init_db,
+    create_session,
+    log_interaction,
+    add_to_reservoir,
+    get_reservoir_items,
+    get_reservoir_stats,
+    delete_reservoir_item,
+)
 from llm import generate_wisdom
 
 app = Sanic("epoche")
@@ -53,11 +61,15 @@ async def generate(request: Request) -> JSONResponse:
         await create_session(session_id, situation)
 
     try:
+        # Fetch random reservoir items for inspiration
+        reservoir_items = await get_reservoir_items(limit=5, random_order=True)
+
         wisdom = await generate_wisdom(
             situation=situation,
             previous_wisdoms=previous_wisdoms,
             temperature=temperature,
             top_p=top_p,
+            reservoir_items=reservoir_items if reservoir_items else None,
         )
 
         # Log the interaction
@@ -104,6 +116,80 @@ async def log_event(request: Request) -> JSONResponse:
 async def health(request: Request) -> JSONResponse:
     """Health check endpoint."""
     return sanic_json({"status": "ok"})
+
+
+# --- Reservoir endpoints ---
+
+@app.post("/api/reservoir")
+async def add_reservoir_item(request: Request) -> JSONResponse:
+    """Add an idea/quote to the reservoir."""
+    data = request.json
+
+    text = data.get("text", "").strip()
+    if not text:
+        return sanic_json({"error": "Text is required"}, status=400)
+
+    if len(text) > 2000:
+        return sanic_json({"error": "Text must be 2000 characters or less"}, status=400)
+
+    source_url = data.get("source_url", "").strip() or None
+    source_title = data.get("source_title", "").strip() or None
+
+    try:
+        item_id = await add_to_reservoir(
+            text=text,
+            source_url=source_url,
+            source_title=source_title,
+        )
+
+        return sanic_json({
+            "id": item_id,
+            "added": True,
+        })
+
+    except Exception as e:
+        return sanic_json({"error": str(e)}, status=500)
+
+
+@app.get("/api/reservoir")
+async def list_reservoir(request: Request) -> JSONResponse:
+    """List items from the reservoir."""
+    limit = int(request.args.get("limit", 50))
+    random_order = request.args.get("random", "false").lower() == "true"
+
+    limit = max(1, min(100, limit))
+
+    try:
+        items = await get_reservoir_items(limit=limit, random_order=random_order)
+        return sanic_json({"items": items})
+
+    except Exception as e:
+        return sanic_json({"error": str(e)}, status=500)
+
+
+@app.get("/api/reservoir/stats")
+async def reservoir_stats(request: Request) -> JSONResponse:
+    """Get reservoir statistics."""
+    try:
+        stats = await get_reservoir_stats()
+        return sanic_json(stats)
+
+    except Exception as e:
+        return sanic_json({"error": str(e)}, status=500)
+
+
+@app.delete("/api/reservoir/<item_id:int>")
+async def remove_reservoir_item(request: Request, item_id: int) -> JSONResponse:
+    """Delete an item from the reservoir."""
+    try:
+        deleted = await delete_reservoir_item(item_id)
+        if deleted:
+            return sanic_json({"deleted": True})
+        else:
+            return sanic_json({"error": "Item not found"}, status=404)
+
+    except Exception as e:
+        return sanic_json({"error": str(e)}, status=500)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      width: 320px;
+      padding: 20px;
+      background: #f7f6f3;
+      color: #1a1a1a;
+    }
+
+    h1 {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      color: #666;
+    }
+
+    .instructions {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #666;
+      margin-bottom: 16px;
+    }
+
+    .instructions strong {
+      color: #1a1a1a;
+    }
+
+    .stats {
+      font-size: 12px;
+      color: #999;
+      padding-top: 12px;
+      border-top: 1px solid #d4d4d4;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .last-added {
+      margin-top: 16px;
+      padding: 12px;
+      background: #fff;
+      border: 1px solid #d4d4d4;
+      font-size: 12px;
+    }
+
+    .last-added-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #999;
+      margin-bottom: 6px;
+    }
+
+    .last-added-text {
+      font-style: italic;
+      color: #666;
+      line-height: 1.4;
+    }
+
+    .success {
+      color: #4a7c59;
+    }
+
+    .error {
+      color: #c45;
+    }
+
+    .settings {
+      margin-top: 16px;
+    }
+
+    .settings label {
+      font-size: 11px;
+      color: #666;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .settings input {
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
+      border: 1px solid #d4d4d4;
+      background: #fff;
+      outline: none;
+    }
+
+    .settings input:focus {
+      border-color: #666;
+    }
+
+    .save-btn {
+      margin-top: 8px;
+      padding: 6px 12px;
+      font-size: 11px;
+      background: transparent;
+      border: 1px solid #d4d4d4;
+      cursor: pointer;
+      text-transform: lowercase;
+    }
+
+    .save-btn:hover {
+      border-color: #1a1a1a;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ángulos Oblicuos</h1>
+
+  <div class="instructions">
+    <strong>Selecciona texto</strong> en cualquier página y haz clic derecho → <strong>"Añadir al reservorio"</strong> para guardar ideas, citas y fragmentos que inspirarán nuevas perspectivas.
+  </div>
+
+  <div id="last-added"></div>
+
+  <div id="stats" class="stats"></div>
+
+  <div class="settings">
+    <label for="api-url">API URL</label>
+    <input type="text" id="api-url" placeholder="http://localhost:8000">
+    <button class="save-btn" id="save-settings">guardar</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
