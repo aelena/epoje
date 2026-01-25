@@ -4,7 +4,7 @@ import { GenerateRequest, GenerateResponse, LogRequest } from '../types'
 const API_BASE = '/api'
 
 export function useWisdom() {
-  const generateWisdom = useCallback(async (request: GenerateRequest): Promise<GenerateResponse> => {
+  const generateWisdoms = useCallback(async (request: GenerateRequest): Promise<GenerateResponse> => {
     const response = await fetch(`${API_BASE}/generate`, {
       method: 'POST',
       headers: {
@@ -14,7 +14,7 @@ export function useWisdom() {
     })
 
     if (!response.ok) {
-      throw new Error('Failed to generate wisdom')
+      throw new Error('Failed to generate wisdoms')
     }
 
     return response.json()
@@ -34,5 +34,5 @@ export function useWisdom() {
     }
   }, [])
 
-  return { generateWisdom, logAction }
+  return { generateWisdoms, logAction }
 }

@@ -1,9 +1,10 @@
 import os
-from anthropic import AsyncAnthropic
+import random
+from openai import AsyncOpenAI
 
-client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-SYSTEM_PROMPT_BASE = """You are a minimalist philosophical oracle. Your purpose is to offer unexpected angles, intellectual provocations, and reframes based on classical philosophy, Stoicism, Taoism, Zen Buddhism, and Socratic thought.
+SYSTEM_PROMPT = """You are a minimalist philosophical oracle. Your purpose is to offer unexpected angles, intellectual provocations, and reframes based on classical philosophy, Stoicism, Taoism, Zen Buddhism, and Socratic thought.
 
 STRICT RULES:
 - Respond with ONE short phrase only (maximum 15 words)
@@ -24,31 +25,39 @@ The user has collected the following ideas, quotes, and fragments as a source of
 
 {reservoir_texts}"""
 
+MIN_RESERVOIR_SIZE = 10
+RESERVOIR_SAMPLE_SIZE = 5
 
-async def generate_wisdom(
+
+async def generate_wisdoms(
     situation: str,
     previous_wisdoms: list[str],
     temperature: float = 0.7,
-    top_p: float = 0.9,
     reservoir_items: list[dict] = None,
-) -> str:
-    """Generate an oblique wisdom phrase using Claude.
+    count: int = 5,
+) -> list[str]:
+    """Generate multiple oblique wisdom phrases using OpenAI.
 
     Args:
         situation: The user's creative block or problem
         previous_wisdoms: List of previously generated wisdoms to avoid repetition
         temperature: LLM temperature (0.3-1.3)
-        top_p: LLM top_p (0.7-1.0)
         reservoir_items: Optional list of reservoir items to use as inspiration
+        count: Number of wisdoms to generate (default 5)
+
+    Returns:
+        List of wisdom strings
     """
 
     # Build system prompt, optionally including reservoir
-    system_prompt = SYSTEM_PROMPT_BASE
+    system_prompt = SYSTEM_PROMPT
 
-    if reservoir_items:
+    if reservoir_items and len(reservoir_items) >= MIN_RESERVOIR_SIZE:
+        # Sample random items from reservoir
+        sampled = random.sample(reservoir_items, min(RESERVOIR_SAMPLE_SIZE, len(reservoir_items)))
         reservoir_texts = "\n".join(
             f"- \"{item['text'][:200]}{'...' if len(item['text']) > 200 else ''}\""
-            for item in reservoir_items[:5]  # Limit to 5 items
+            for item in sampled
         )
         system_prompt += RESERVOIR_ADDENDUM.format(reservoir_texts=reservoir_texts)
 
@@ -56,27 +65,49 @@ async def generate_wisdom(
     user_message = f"Situation: {situation}"
 
     if previous_wisdoms:
-        avoid_list = "\n".join(f"- {w}" for w in previous_wisdoms[-5:])  # Last 5 to avoid
+        avoid_list = "\n".join(f"- {w}" for w in previous_wisdoms[-5:])
         user_message += f"\n\nPrevious phrases (do NOT repeat or paraphrase):\n{avoid_list}"
 
-    response = await client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=100,
+    user_message += f"\n\nGenerate {count} different oblique perspectives, each on its own line. Number them 1-{count}."
+
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        max_tokens=500,
         temperature=temperature,
-        top_p=top_p,
-        system=system_prompt,
         messages=[
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ]
     )
 
-    # Extract text from response
-    wisdom = response.content[0].text.strip()
+    # Extract and parse the response
+    raw_text = response.choices[0].message.content.strip()
 
-    # Remove quotes if the model wrapped the response
-    if wisdom.startswith('"') and wisdom.endswith('"'):
-        wisdom = wisdom[1:-1]
-    if wisdom.startswith("«") and wisdom.endswith("»"):
-        wisdom = wisdom[1:-1]
+    # Parse numbered lines
+    wisdoms = []
+    for line in raw_text.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        # Remove numbering like "1.", "1)", "1:"
+        for prefix in [f"{i}." for i in range(1, count + 1)] + \
+                      [f"{i})" for i in range(1, count + 1)] + \
+                      [f"{i}:" for i in range(1, count + 1)]:
+            if line.startswith(prefix):
+                line = line[len(prefix):].strip()
+                break
 
-    return wisdom
+        # Remove quotes if wrapped
+        if line.startswith('"') and line.endswith('"'):
+            line = line[1:-1]
+        if line.startswith("«") and line.endswith("»"):
+            line = line[1:-1]
+
+        if line:
+            wisdoms.append(line)
+
+    # Ensure we have exactly count wisdoms (pad or trim)
+    while len(wisdoms) < count:
+        wisdoms.append(wisdoms[-1] if wisdoms else "The obstacle is the way.")
+
+    return wisdoms[:count]

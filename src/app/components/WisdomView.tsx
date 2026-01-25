@@ -1,11 +1,14 @@
 import Controls from './Controls'
+import WisdomSlider from './WisdomSlider'
 
 interface WisdomViewProps {
   situation: string
-  wisdom: string | null
-  wisdomHistory: string[]
+  wisdoms: string[]
+  selectedIndex: number
   heatLevel: number
   isLoading: boolean
+  reservoirActive: boolean
+  onSliderChange: (index: number) => void
   onMore: () => void
   onLess: () => void
   onCooldown: () => void
@@ -15,18 +18,19 @@ interface WisdomViewProps {
 
 export default function WisdomView({
   situation,
-  wisdom,
-  wisdomHistory,
+  wisdoms,
+  selectedIndex,
   heatLevel,
   isLoading,
+  reservoirActive,
+  onSliderChange,
   onMore,
   onLess,
   onCooldown,
   onExport,
   onReset,
 }: WisdomViewProps) {
-  const historyLength = wisdomHistory.length
-  const maxDots = 10
+  const currentWisdom = wisdoms[selectedIndex] || null
 
   return (
     <>
@@ -36,11 +40,11 @@ export default function WisdomView({
         {isLoading ? (
           <span className="loading">contemplating...</span>
         ) : (
-          wisdom
+          currentWisdom
         )}
       </div>
 
-      {wisdom && !isLoading && (
+      {currentWisdom && !isLoading && (
         <button className="btn export-btn" onClick={onExport}>
           save
         </button>
@@ -54,26 +58,25 @@ export default function WisdomView({
         onCooldown={onCooldown}
       />
 
-      {historyLength > 1 && (
-        <div className="history-dots">
-          {Array.from({ length: Math.min(historyLength, maxDots) }).map((_, i) => (
-            <div
-              key={i}
-              className={`history-dot ${i === historyLength - 1 ? 'active' : ''}`}
-            />
-          ))}
-          {historyLength > maxDots && (
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-              +{historyLength - maxDots}
-            </span>
-          )}
+      {wisdoms.length > 1 && !isLoading && (
+        <WisdomSlider
+          count={wisdoms.length}
+          selectedIndex={selectedIndex}
+          onChange={onSliderChange}
+          disabled={isLoading}
+        />
+      )}
+
+      {reservoirActive && (
+        <div className="reservoir-indicator">
+          reservoir active
         </div>
       )}
 
       <button
         className="btn-link"
         onClick={onReset}
-        style={{ marginTop: '3rem' }}
+        style={{ marginTop: '2rem' }}
       >
         new beginning
       </button>

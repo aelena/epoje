@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { AppState, DEFAULT_TEMP, DEFAULT_TOP_P } from './types'
+import { AppState, DEFAULT_TEMP } from './types'
 import { useWisdom } from './hooks/useWisdom'
 import EntryView from './components/EntryView'
 import WisdomView from './components/WisdomView'
@@ -11,16 +11,17 @@ function generateSessionId(): string {
 function App() {
   const [state, setState] = useState<AppState>({
     situation: '',
-    currentWisdom: null,
+    currentWisdoms: [],
+    selectedIndex: 0,
     wisdomHistory: [],
     isLoading: false,
     hasStarted: false,
     temperature: DEFAULT_TEMP,
-    topP: DEFAULT_TOP_P,
     sessionId: generateSessionId(),
+    reservoirActive: false,
   })
 
-  const { generateWisdom, logAction } = useWisdom()
+  const { generateWisdoms, logAction } = useWisdom()
 
   const handleSituationChange = useCallback((value: string) => {
     setState(prev => ({ ...prev, situation: value }))
@@ -32,103 +33,102 @@ function App() {
     setState(prev => ({ ...prev, isLoading: true, hasStarted: true }))
 
     try {
-      const response = await generateWisdom({
+      const response = await generateWisdoms({
         situation: state.situation,
         previous_wisdoms: state.wisdomHistory,
         action: 'initial',
         temperature: state.temperature,
-        top_p: state.topP,
         session_id: state.sessionId,
+        count: 5,
       })
 
       setState(prev => ({
         ...prev,
-        currentWisdom: response.wisdom,
-        wisdomHistory: [...prev.wisdomHistory, response.wisdom],
+        currentWisdoms: response.wisdoms,
+        selectedIndex: response.selected_index,
+        wisdomHistory: [...prev.wisdomHistory, ...response.wisdoms],
         isLoading: false,
+        reservoirActive: response.reservoir_active,
       }))
     } catch {
       setState(prev => ({ ...prev, isLoading: false }))
     }
-  }, [state.situation, state.wisdomHistory, state.temperature, state.topP, state.sessionId, state.isLoading, generateWisdom])
+  }, [state.situation, state.wisdomHistory, state.temperature, state.sessionId, state.isLoading, generateWisdoms])
 
   const handleMore = useCallback(async () => {
     if (state.isLoading) return
 
     const tempIncrease = 0.05 + Math.random() * 0.1
-    const topPIncrease = 0.02 + Math.random() * 0.01
     const newTemp = Math.min(state.temperature + tempIncrease, 1.3)
-    const newTopP = Math.min(state.topP + topPIncrease, 1.0)
 
     setState(prev => ({
       ...prev,
       isLoading: true,
       temperature: newTemp,
-      topP: newTopP,
     }))
 
     try {
-      const response = await generateWisdom({
+      const response = await generateWisdoms({
         situation: state.situation,
         previous_wisdoms: state.wisdomHistory,
         action: 'more',
         temperature: newTemp,
-        top_p: newTopP,
         session_id: state.sessionId,
+        count: 5,
       })
 
       setState(prev => ({
         ...prev,
-        currentWisdom: response.wisdom,
-        wisdomHistory: [...prev.wisdomHistory, response.wisdom],
+        currentWisdoms: response.wisdoms,
+        selectedIndex: response.selected_index,
+        wisdomHistory: [...prev.wisdomHistory, ...response.wisdoms],
         isLoading: false,
+        reservoirActive: response.reservoir_active,
       }))
     } catch {
       setState(prev => ({ ...prev, isLoading: false }))
     }
-  }, [state.situation, state.wisdomHistory, state.temperature, state.topP, state.sessionId, state.isLoading, generateWisdom])
+  }, [state.situation, state.wisdomHistory, state.temperature, state.sessionId, state.isLoading, generateWisdoms])
 
   const handleLess = useCallback(async () => {
     if (state.isLoading) return
 
     const tempDecrease = 0.03 + Math.random() * 0.05
-    const topPDecrease = 0.01 + Math.random() * 0.01
     const newTemp = Math.max(state.temperature - tempDecrease, 0.3)
-    const newTopP = Math.max(state.topP - topPDecrease, 0.7)
 
     setState(prev => ({
       ...prev,
       isLoading: true,
       temperature: newTemp,
-      topP: newTopP,
     }))
 
     try {
-      const response = await generateWisdom({
+      const response = await generateWisdoms({
         situation: state.situation,
         previous_wisdoms: state.wisdomHistory,
         action: 'less',
         temperature: newTemp,
-        top_p: newTopP,
         session_id: state.sessionId,
+        count: 5,
       })
 
       setState(prev => ({
         ...prev,
-        currentWisdom: response.wisdom,
-        wisdomHistory: [...prev.wisdomHistory, response.wisdom],
+        currentWisdoms: response.wisdoms,
+        selectedIndex: response.selected_index,
+        wisdomHistory: [...prev.wisdomHistory, ...response.wisdoms],
         isLoading: false,
+        reservoirActive: response.reservoir_active,
       }))
     } catch {
       setState(prev => ({ ...prev, isLoading: false }))
     }
-  }, [state.situation, state.wisdomHistory, state.temperature, state.topP, state.sessionId, state.isLoading, generateWisdom])
+  }, [state.situation, state.wisdomHistory, state.temperature, state.sessionId, state.isLoading, generateWisdoms])
 
   const handleCooldown = useCallback(() => {
     setState(prev => ({
       ...prev,
       temperature: DEFAULT_TEMP,
-      topP: DEFAULT_TOP_P,
     }))
     logAction({
       session_id: state.sessionId,
@@ -137,18 +137,23 @@ function App() {
     })
   }, [state.sessionId, logAction])
 
-  const handleExport = useCallback(async () => {
-    if (!state.currentWisdom) return
+  const handleSliderChange = useCallback((index: number) => {
+    setState(prev => ({ ...prev, selectedIndex: index }))
+  }, [])
 
-    const text = `${state.situation}\n\n${state.currentWisdom}`
+  const handleExport = useCallback(async () => {
+    const currentWisdom = state.currentWisdoms[state.selectedIndex]
+    if (!currentWisdom) return
+
+    const text = `${state.situation}\n\n${currentWisdom}`
     await navigator.clipboard.writeText(text)
 
     logAction({
       session_id: state.sessionId,
       action: 'export',
-      data: { wisdom: state.currentWisdom },
+      data: { wisdom: currentWisdom, index: state.selectedIndex },
     })
-  }, [state.situation, state.currentWisdom, state.sessionId, logAction])
+  }, [state.situation, state.currentWisdoms, state.selectedIndex, state.sessionId, logAction])
 
   const handleReset = useCallback(() => {
     logAction({
@@ -159,13 +164,14 @@ function App() {
 
     setState({
       situation: '',
-      currentWisdom: null,
+      currentWisdoms: [],
+      selectedIndex: 0,
       wisdomHistory: [],
       isLoading: false,
       hasStarted: false,
       temperature: DEFAULT_TEMP,
-      topP: DEFAULT_TOP_P,
       sessionId: generateSessionId(),
+      reservoirActive: false,
     })
   }, [state.sessionId, state.wisdomHistory.length, logAction])
 
@@ -183,10 +189,12 @@ function App() {
       ) : (
         <WisdomView
           situation={state.situation}
-          wisdom={state.currentWisdom}
-          wisdomHistory={state.wisdomHistory}
+          wisdoms={state.currentWisdoms}
+          selectedIndex={state.selectedIndex}
           heatLevel={heatLevel}
           isLoading={state.isLoading}
+          reservoirActive={state.reservoirActive}
+          onSliderChange={handleSliderChange}
           onMore={handleMore}
           onLess={handleLess}
           onCooldown={handleCooldown}

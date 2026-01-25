@@ -1,12 +1,13 @@
 export interface AppState {
   situation: string;
-  currentWisdom: string | null;
+  currentWisdoms: string[];
+  selectedIndex: number;
   wisdomHistory: string[];
   isLoading: boolean;
   hasStarted: boolean;
   temperature: number;
-  topP: number;
   sessionId: string;
+  reservoirActive: boolean;
 }
 
 export interface GenerateRequest {
@@ -14,14 +15,15 @@ export interface GenerateRequest {
   previous_wisdoms: string[];
   action: 'initial' | 'more' | 'less';
   temperature: number;
-  top_p: number;
   session_id: string;
+  count: number;
 }
 
 export interface GenerateResponse {
-  wisdom: string;
+  wisdoms: string[];
+  selected_index: number;
   temperature_used: number;
-  top_p_used: number;
+  reservoir_active: boolean;
 }
 
 export interface LogRequest {

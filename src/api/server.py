@@ -18,7 +18,8 @@ from database import (
     get_reservoir_stats,
     delete_reservoir_item,
 )
-from llm import generate_wisdom
+from llm import generate_wisdoms
+import random
 
 app = Sanic("epoche")
 
@@ -35,7 +36,7 @@ async def setup_db(app, loop):
 
 @app.post("/api/generate")
 async def generate(request: Request) -> JSONResponse:
-    """Generate an oblique wisdom phrase."""
+    """Generate multiple oblique wisdom phrases."""
     data = request.json
 
     # Validate required fields
@@ -49,42 +50,46 @@ async def generate(request: Request) -> JSONResponse:
     previous_wisdoms = data.get("previous_wisdoms", [])
     action = data.get("action", "initial")
     temperature = float(data.get("temperature", 0.7))
-    top_p = float(data.get("top_p", 0.9))
     session_id = data.get("session_id", "anonymous")
+    count = int(data.get("count", 5))
 
     # Clamp values to valid ranges
     temperature = max(0.3, min(1.3, temperature))
-    top_p = max(0.7, min(1.0, top_p))
+    count = max(1, min(5, count))
 
     # Create session if first interaction
     if action == "initial":
         await create_session(session_id, situation)
 
     try:
-        # Fetch random reservoir items for inspiration
-        reservoir_items = await get_reservoir_items(limit=5, random_order=True)
+        # Fetch all reservoir items to check count
+        reservoir_items = await get_reservoir_items(limit=100, random_order=False)
 
-        wisdom = await generate_wisdom(
+        wisdoms = await generate_wisdoms(
             situation=situation,
             previous_wisdoms=previous_wisdoms,
             temperature=temperature,
-            top_p=top_p,
             reservoir_items=reservoir_items if reservoir_items else None,
+            count=count,
         )
+
+        # Pick a random initial selection
+        selected_index = random.randint(0, len(wisdoms) - 1)
 
         # Log the interaction
         await log_interaction(
             session_id=session_id,
             action=action,
-            wisdom=wisdom,
+            wisdom=wisdoms[selected_index],
             temperature=temperature,
-            top_p=top_p,
+            data={"all_wisdoms": wisdoms, "selected_index": selected_index},
         )
 
         return sanic_json({
-            "wisdom": wisdom,
+            "wisdoms": wisdoms,
+            "selected_index": selected_index,
             "temperature_used": temperature,
-            "top_p_used": top_p,
+            "reservoir_active": len(reservoir_items) >= 10 if reservoir_items else False,
         })
 
     except Exception as e:
