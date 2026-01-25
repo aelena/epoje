@@ -21,8 +21,8 @@ export default function Controls({
         className="control-btn"
         onClick={onLess}
         disabled={isLoading}
-        title="Menos aleatorio"
-        aria-label="Generar con menos creatividad"
+        title="Less random"
+        aria-label="Generate with less creativity"
       >
         −
       </button>
@@ -33,8 +33,8 @@ export default function Controls({
         className="control-btn"
         onClick={onMore}
         disabled={isLoading}
-        title="Más aleatorio"
-        aria-label="Generar con más creatividad"
+        title="More random"
+        aria-label="Generate with more creativity"
       >
         +
       </button>

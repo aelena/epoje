@@ -4,7 +4,7 @@ const API_BASE = 'http://localhost:8000';
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'add-to-reservoir',
-    title: 'Añadir al reservorio',
+    title: 'Add to reservoir',
     contexts: ['selection']
   });
 });

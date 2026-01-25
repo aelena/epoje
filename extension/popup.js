@@ -14,7 +14,7 @@ async function init() {
     container.innerHTML = `
       <div class="last-added">
         <div class="last-added-label">
-          Último añadido ${timeAgo}
+          Last added ${timeAgo}
           <span class="${lastAdded.success ? 'success' : 'error'}">
             ${lastAdded.success ? '✓' : '✗'}
           </span>
@@ -50,29 +50,29 @@ async function loadStats(apiUrl) {
       const stats = await response.json();
       statsContainer.innerHTML = `
         <div class="stats-row">
-          <span>Ideas en el reservorio:</span>
+          <span>Ideas in reservoir:</span>
           <span>${stats.total_items}</span>
         </div>
         <div class="stats-row">
-          <span>Añadidas hoy:</span>
+          <span>Added today:</span>
           <span>${stats.added_today}</span>
         </div>
       `;
     } else {
-      statsContainer.innerHTML = '<div class="error">No se pudo conectar con la API</div>';
+      statsContainer.innerHTML = '<div class="error">Could not connect to API</div>';
     }
   } catch {
-    statsContainer.innerHTML = '<div class="error">API no disponible</div>';
+    statsContainer.innerHTML = '<div class="error">API unavailable</div>';
   }
 }
 
 function getTimeAgo(timestamp) {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
 
-  if (seconds < 60) return 'hace un momento';
-  if (seconds < 3600) return `hace ${Math.floor(seconds / 60)} min`;
-  if (seconds < 86400) return `hace ${Math.floor(seconds / 3600)} h`;
-  return `hace ${Math.floor(seconds / 86400)} días`;
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`;
+  return `${Math.floor(seconds / 86400)} days ago`;
 }
 
 init();

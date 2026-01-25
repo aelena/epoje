@@ -34,7 +34,7 @@ export default function WisdomView({
 
       <div className="wisdom">
         {isLoading ? (
-          <span className="loading">contemplando...</span>
+          <span className="loading">contemplating...</span>
         ) : (
           wisdom
         )}
@@ -42,7 +42,7 @@ export default function WisdomView({
 
       {wisdom && !isLoading && (
         <button className="btn export-btn" onClick={onExport}>
-          guardar
+          save
         </button>
       )}
 
@@ -75,7 +75,7 @@ export default function WisdomView({
         onClick={onReset}
         style={{ marginTop: '3rem' }}
       >
-        nuevo comienzo
+        new beginning
       </button>
     </>
   )

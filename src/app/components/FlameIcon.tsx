@@ -21,7 +21,7 @@ export default function FlameIcon({ heatLevel, onClick }: FlameIconProps) {
     <div
       className="flame-container"
       onClick={onClick}
-      title="Enfriar temperatura"
+      title="Cool down temperature"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}

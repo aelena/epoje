@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Ángulos Oblicuos",
+  "name": "Oblique Angles",
   "version": "1.0.0",
-  "description": "Captura texto para tu reservorio de ideas oblicuas",
+  "description": "Capture text for your reservoir of oblique ideas",
   "permissions": [
     "contextMenus",
     "activeTab",

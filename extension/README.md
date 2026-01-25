@@ -1,34 +1,34 @@
-# Ángulos Oblicuos - Chrome Extension
+# Oblique Angles - Chrome Extension
 
-Captura texto de cualquier página web y añádelo a tu reservorio de ideas.
+Capture text from any webpage and add it to your reservoir of ideas.
 
-## Instalación
+## Installation
 
-1. **Convertir iconos**: Chrome requiere iconos PNG. Convierte los SVGs en `icons/` a PNG:
+1. **Convert icons**: Chrome requires PNG icons. Convert the SVGs in `icons/` to PNG:
    - `icon16.svg` → `icon16.png` (16x16)
    - `icon48.svg` → `icon48.png` (48x48)
    - `icon128.svg` → `icon128.png` (128x128)
 
-   Puedes usar cualquier herramienta como Inkscape, ImageMagick, o un conversor online.
+   You can use any tool like Inkscape, ImageMagick, or an online converter.
 
-2. **Cargar en Chrome**:
-   - Abre `chrome://extensions/`
-   - Activa "Modo desarrollador" (esquina superior derecha)
-   - Clic en "Cargar extensión sin empaquetar"
-   - Selecciona esta carpeta (`extension/`)
+2. **Load in Chrome**:
+   - Open `chrome://extensions/`
+   - Enable "Developer mode" (top right corner)
+   - Click "Load unpacked"
+   - Select this folder (`extension/`)
 
-3. **Configurar API URL** (si no usas localhost):
-   - Clic en el icono de la extensión
-   - Cambia la URL de la API en la configuración
-   - Clic en "guardar"
+3. **Configure API URL** (if not using localhost):
+   - Click the extension icon
+   - Change the API URL in settings
+   - Click "save"
 
-## Uso
+## Usage
 
-1. Selecciona cualquier texto en una página web
-2. Clic derecho → "Añadir al reservorio"
-3. El badge mostrará ✓ (éxito) o ! (error)
+1. Select any text on a webpage
+2. Right-click → "Add to reservoir"
+3. The badge will show ✓ (success) or ! (error)
 
-## Requisitos
+## Requirements
 
-- API de Ángulos Oblicuos ejecutándose (por defecto en `http://localhost:8000`)
-- La API debe tener CORS configurado para permitir peticiones desde la extensión
+- Oblique Angles API running (default at `http://localhost:8000`)
+- API must have CORS configured to allow requests from the extension

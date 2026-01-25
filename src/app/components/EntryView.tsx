@@ -25,12 +25,12 @@ export default function EntryView({
 
   return (
     <>
-      <h1 className="title">Ángulos Oblicuos</h1>
-      <p className="subtitle">perspectivas para desbloquear</p>
+      <h1 className="title">Oblique Angles</h1>
+      <p className="subtitle">perspectives to unlock</p>
 
       <textarea
         className="textarea"
-        placeholder="¿Qué te bloquea?"
+        placeholder="What's blocking you?"
         value={situation}
         onChange={(e) => onSituationChange(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -48,7 +48,7 @@ export default function EntryView({
         disabled={!canSubmit}
         style={{ marginTop: '2rem' }}
       >
-        {isLoading ? 'contemplando...' : 'contemplar'}
+        {isLoading ? 'contemplating...' : 'contemplate'}
       </button>
     </>
   )
