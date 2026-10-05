@@ -1,7 +1,12 @@
+// One call to the oracle: up to 5 alternatives, one of them chosen
+export interface OracleRound {
+  wisdoms: string[];
+  selectedIndex: number;
+}
+
 export interface AppState {
   situation: string;
-  currentWisdoms: string[];
-  selectedIndex: number;
+  rounds: OracleRound[];  // oldest first; the last one is the live round
   wisdomHistory: string[];
   isLoading: boolean;
   hasStarted: boolean;

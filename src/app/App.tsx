@@ -14,8 +14,7 @@ function generateSessionId(): string {
 function initialState(): AppState {
   return {
     situation: '',
-    currentWisdoms: [],
-    selectedIndex: 0,
+    rounds: [],
     wisdomHistory: [],
     isLoading: false,
     hasStarted: false,
@@ -54,8 +53,7 @@ function App() {
 
       setState(prev => ({
         ...prev,
-        currentWisdoms: response.wisdoms,
-        selectedIndex: response.selected_index,
+        rounds: [...prev.rounds, { wisdoms: response.wisdoms, selectedIndex: response.selected_index }],
         wisdomHistory: [...prev.wisdomHistory, ...response.wisdoms],
         isLoading: false,
         reservoirActive: response.reservoir_active,
@@ -87,21 +85,34 @@ function App() {
   }, [state.sessionId, logAction])
 
   const handleSliderChange = useCallback((index: number) => {
-    setState(prev => ({ ...prev, selectedIndex: index }))
+    // Flipping alternatives only applies to the live (latest) round
+    setState(prev => {
+      if (!prev.rounds.length) return prev
+      const rounds = [...prev.rounds]
+      rounds[rounds.length - 1] = { ...rounds[rounds.length - 1], selectedIndex: index }
+      return { ...prev, rounds }
+    })
   }, [])
 
-  const handleExport = useCallback(async () => {
-    const currentWisdom = state.currentWisdoms[state.selectedIndex]
-    if (!currentWisdom) return
+  // Copies "situation + phrase" (post-it / workshop format). Returns success for UI feedback.
+  const handleCopy = useCallback(async (roundIndex: number): Promise<boolean> => {
+    const round = state.rounds[roundIndex]
+    const wisdom = round?.wisdoms[round.selectedIndex]
+    if (!wisdom) return false
 
-    await navigator.clipboard.writeText(`${state.situation}\n\n${currentWisdom}`)
+    try {
+      await navigator.clipboard.writeText(`${state.situation}\n\n${wisdom}`)
+    } catch {
+      return false
+    }
 
     logAction({
       session_id: state.sessionId,
       action: 'export',
-      data: { wisdom: currentWisdom, index: state.selectedIndex },
+      data: { wisdom, round: roundIndex, index: round.selectedIndex },
     })
-  }, [state.situation, state.currentWisdoms, state.selectedIndex, state.sessionId, logAction])
+    return true
+  }, [state.situation, state.rounds, state.sessionId, logAction])
 
   const handleReset = useCallback(() => {
     logAction({
@@ -150,8 +161,7 @@ function App() {
       ) : (
         <WisdomView
           situation={state.situation}
-          wisdoms={state.currentWisdoms}
-          selectedIndex={state.selectedIndex}
+          rounds={state.rounds}
           heatLevel={heatLevel}
           isLoading={state.isLoading}
           error={state.error}
@@ -160,7 +170,7 @@ function App() {
           onMore={handleMore}
           onLess={handleLess}
           onCooldown={handleCooldown}
-          onExport={handleExport}
+          onCopy={handleCopy}
           onReset={handleReset}
         />
       )}

@@ -205,30 +205,86 @@ body::before {
   color: var(--text-secondary);
 }
 
-/* Wisdom display */
-.wisdom {
-  font-size: 1.75rem;
+/* Situation + oracle log */
+.situation {
+  font-size: 1.35rem;
   font-style: italic;
-  text-align: center;
   line-height: 1.5;
-  padding: var(--spacing-lg) 0;
-  animation: fadeIn 1s ease-out;
-}
-
-.situation-reminder {
-  font-size: 0.95rem;
-  font-style: italic;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   text-align: center;
   margin-bottom: var(--spacing-md);
+  overflow-wrap: anywhere;
 }
 
-.situation-reminder::before {
-  content: '"';
+.situation::before { content: '“'; }
+.situation::after { content: '”'; }
+
+.oracle-log {
+  width: 100%;
+  max-height: min(52vh, 30rem);
+  max-height: min(52dvh, 30rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--spacing-sm);
+  background: transparent;
+  border: 1px solid var(--border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) transparent;
 }
 
-.situation-reminder::after {
-  content: '"';
+.oracle-entry {
+  position: relative;
+  padding: 1.25rem 0;
+  text-align: center;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.oracle-entry + .oracle-entry {
+  border-top: 1px solid var(--border);
+}
+
+.oracle-phrase {
+  font-size: 1.1rem;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.oracle-entry.live .oracle-phrase {
+  font-size: 1.6rem;
+  color: var(--text-primary);
+}
+
+.oracle-entry.live .wisdom-slider {
+  margin-top: 1rem;
+}
+
+.oracle-copy {
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  color: var(--text-muted-light);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.oracle-entry:hover .oracle-copy,
+.oracle-entry.live .oracle-copy,
+.oracle-copy:focus-visible {
+  color: var(--text-muted);
+}
+
+.oracle-copy:hover {
+  color: var(--text-primary);
+}
+
+.oracle-log .wisdom-error {
+  padding: 1rem 0;
+  margin: 0;
 }
 
 /* Controls */
@@ -297,14 +353,6 @@ body::before {
 }
 
 /* Export button */
-.export-btn {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  letter-spacing: 0.05em;
-  padding: 0.5rem 1rem;
-  margin-top: var(--spacing-md);
-}
-
 /* Loading state */
 .loading {
   font-style: italic;
@@ -541,8 +589,12 @@ body::before {
     letter-spacing: 0.1em;
   }
 
-  .wisdom {
-    font-size: 1.5rem;
+  .situation {
+    font-size: 1.2rem;
+  }
+
+  .oracle-entry.live .oracle-phrase {
+    font-size: 1.4rem;
   }
 
   .control-btn {
