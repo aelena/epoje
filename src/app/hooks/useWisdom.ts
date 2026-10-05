@@ -1,38 +1,41 @@
-import { useCallback } from 'react'
-import { GenerateRequest, GenerateResponse, LogRequest } from '../types'
+import { GenerateRequest, GenerateResponse, LogRequest } from '../types';
+import { useReservoir } from '../contexts/ReservoirContext';
 
-const API_BASE = '/api'
+// Relative by default: Vite proxies /api in dev, the API serves the app in prod
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export function useWisdom() {
-  const generateWisdoms = useCallback(async (request: GenerateRequest): Promise<GenerateResponse> => {
-    const response = await fetch(`${API_BASE}/generate`, {
+  const { items } = useReservoir();
+
+  const generateWisdoms = async (request: GenerateRequest): Promise<GenerateResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/generate`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...request,
+        reservoir_items: items.map(i => ({ text: i.text })),
+      }),
+    });
 
     if (!response.ok) {
-      throw new Error('Failed to generate wisdoms')
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || 'The oracle is silent. Try again.');
     }
 
-    return response.json()
-  }, [])
+    return response.json();
+  };
 
-  const logAction = useCallback(async (request: LogRequest): Promise<void> => {
+  const logAction = async (request: LogRequest): Promise<void> => {
     try {
-      await fetch(`${API_BASE}/log`, {
+      await fetch(`${API_BASE_URL}/api/log`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
-      })
+      });
     } catch {
-      // Silently fail logging - non-critical
+      // Logging is best-effort
     }
-  }, [])
+  };
 
-  return { generateWisdoms, logAction }
+  return { generateWisdoms, logAction };
 }

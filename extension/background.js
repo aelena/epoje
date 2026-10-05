@@ -1,70 +1,51 @@
-const API_BASE = 'http://localhost:8000';
+// Captured fragments wait in `pending` until an open epoche tab takes them
+// (see bridge.js). Nothing is sent to any server.
+const APP_URL = 'http://localhost:3000';
 
-// Create context menu on install
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'add-to-reservoir',
     title: 'Add to reservoir',
-    contexts: ['selection']
+    contexts: ['selection'],
   });
 });
 
-// Handle context menu click
+function notify(title, message) {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'icons/icon128.png',
+    title,
+    message,
+  });
+}
+
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId === 'add-to-reservoir' && info.selectionText) {
-    const text = info.selectionText.trim();
-    const sourceUrl = tab?.url || '';
-    const sourceTitle = tab?.title || '';
+  if (info.menuItemId !== 'add-to-reservoir') return;
 
-    try {
-      const response = await fetch(`${API_BASE}/api/reservoir`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: text,
-          source_url: sourceUrl,
-          source_title: sourceTitle,
-        }),
-      });
+  const text = (info.selectionText || '').trim().slice(0, 2000);
+  if (!text) return;
 
-      if (response.ok) {
-        // Store success for popup feedback
-        await chrome.storage.local.set({
-          lastAdded: {
-            text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
-            timestamp: Date.now(),
-            success: true,
-          }
-        });
+  const item = {
+    id: crypto.randomUUID(),
+    text,
+    source_url: info.pageUrl || tab?.url || undefined,
+    source_title: tab?.title || undefined,
+    created_at: new Date().toISOString(),
+  };
 
-        // Show badge briefly
-        chrome.action.setBadgeText({ text: '✓', tabId: tab.id });
-        chrome.action.setBadgeBackgroundColor({ color: '#4a7c59' });
-        setTimeout(() => {
-          chrome.action.setBadgeText({ text: '', tabId: tab.id });
-        }, 2000);
-      } else {
-        throw new Error('Failed to add to reservoir');
-      }
-    } catch (error) {
-      console.error('Error adding to reservoir:', error);
+  const { pending = [] } = await chrome.storage.local.get('pending');
+  pending.push(item);
+  await chrome.storage.local.set({ pending, last_added: item });
 
-      await chrome.storage.local.set({
-        lastAdded: {
-          text: text.substring(0, 100),
-          timestamp: Date.now(),
-          success: false,
-          error: error.message,
-        }
-      });
+  notify(
+    'Added to reservoir',
+    text.length > 60 ? `${text.substring(0, 60)}...` : text,
+  );
+});
 
-      chrome.action.setBadgeText({ text: '!', tabId: tab.id });
-      chrome.action.setBadgeBackgroundColor({ color: '#c45' });
-      setTimeout(() => {
-        chrome.action.setBadgeText({ text: '', tabId: tab.id });
-      }, 2000);
-    }
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+  if (request.action === 'openApp') {
+    chrome.tabs.create({ url: APP_URL });
+    sendResponse({ ok: true });
   }
 });

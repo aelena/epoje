@@ -1,78 +1,20 @@
-const DEFAULT_API = 'http://localhost:8000';
+const pendingEl = document.getElementById('pending');
+const lastEl = document.getElementById('last');
 
-async function init() {
-  // Load settings
-  const { apiUrl } = await chrome.storage.sync.get({ apiUrl: DEFAULT_API });
-  document.getElementById('api-url').value = apiUrl;
+async function render() {
+  const { pending = [], last_added: last } = await chrome.storage.local.get(['pending', 'last_added']);
 
-  // Load last added
-  const { lastAdded } = await chrome.storage.local.get('lastAdded');
-  if (lastAdded) {
-    const container = document.getElementById('last-added');
-    const timeAgo = getTimeAgo(lastAdded.timestamp);
+  pendingEl.textContent = pending.length
+    ? `${pending.length} waiting · open epoche to receive ${pending.length === 1 ? 'it' : 'them'}`
+    : 'all fragments delivered';
 
-    container.innerHTML = `
-      <div class="last-added">
-        <div class="last-added-label">
-          Last added ${timeAgo}
-          <span class="${lastAdded.success ? 'success' : 'error'}">
-            ${lastAdded.success ? '✓' : '✗'}
-          </span>
-        </div>
-        <div class="last-added-text">"${lastAdded.text}"</div>
-        ${lastAdded.error ? `<div class="error" style="margin-top: 6px; font-size: 11px;">Error: ${lastAdded.error}</div>` : ''}
-      </div>
-    `;
-  }
-
-  // Load stats
-  await loadStats(apiUrl);
-
-  // Save settings handler
-  document.getElementById('save-settings').addEventListener('click', async () => {
-    const newUrl = document.getElementById('api-url').value.trim();
-    await chrome.storage.sync.set({ apiUrl: newUrl || DEFAULT_API });
-
-    // Update background script
-    chrome.runtime.sendMessage({ type: 'updateApiUrl', url: newUrl || DEFAULT_API });
-
-    // Reload stats with new URL
-    await loadStats(newUrl || DEFAULT_API);
-  });
+  lastEl.textContent = last ? `“${last.text.length > 140 ? last.text.slice(0, 140) + '…' : last.text}”` : '';
 }
 
-async function loadStats(apiUrl) {
-  const statsContainer = document.getElementById('stats');
+document.getElementById('open').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ action: 'openApp' });
+  window.close();
+});
 
-  try {
-    const response = await fetch(`${apiUrl}/api/reservoir/stats`);
-    if (response.ok) {
-      const stats = await response.json();
-      statsContainer.innerHTML = `
-        <div class="stats-row">
-          <span>Ideas in reservoir:</span>
-          <span>${stats.total_items}</span>
-        </div>
-        <div class="stats-row">
-          <span>Added today:</span>
-          <span>${stats.added_today}</span>
-        </div>
-      `;
-    } else {
-      statsContainer.innerHTML = '<div class="error">Could not connect to API</div>';
-    }
-  } catch {
-    statsContainer.innerHTML = '<div class="error">API unavailable</div>';
-  }
-}
-
-function getTimeAgo(timestamp) {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-
-  if (seconds < 60) return 'just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`;
-  return `${Math.floor(seconds / 86400)} days ago`;
-}
-
-init();
+chrome.storage.onChanged.addListener(render);
+render();

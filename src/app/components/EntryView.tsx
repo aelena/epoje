@@ -5,6 +5,9 @@ interface EntryViewProps {
   onSituationChange: (value: string) => void
   onContemplate: () => void
   isLoading: boolean
+  reservoirCount: number
+  reservoirActive: boolean
+  onOpenReservoir: () => void
 }
 
 export default function EntryView({
@@ -12,13 +15,16 @@ export default function EntryView({
   onSituationChange,
   onContemplate,
   isLoading,
+  reservoirCount,
+  reservoirActive,
+  onOpenReservoir,
 }: EntryViewProps) {
   const charCount = situation.length
   const isOverLimit = charCount > MAX_CHARS
   const canSubmit = situation.trim().length > 0 && !isOverLimit && !isLoading
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.metaKey && canSubmit) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && canSubmit) {
       onContemplate()
     }
   }
@@ -49,6 +55,10 @@ export default function EntryView({
         style={{ marginTop: '2rem' }}
       >
         {isLoading ? 'contemplating...' : 'contemplate'}
+      </button>
+
+      <button className="btn-link reservoir-link" onClick={onOpenReservoir}>
+        reservoir{reservoirCount > 0 ? ` · ${reservoirCount}` : ''}{reservoirActive ? ' · active' : ''}
       </button>
     </>
   )

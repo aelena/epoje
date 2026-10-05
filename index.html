@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#f7f6f3" />
+    <script>
+      // Apply a saved theme before first paint (no flash); see src/app/hooks/useTheme.ts
+      try {
+        var t = localStorage.getItem('epoche_theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
     <meta name="description" content="Oblique Angles - Philosophical perspectives to unlock creativity" />
     <title>Oblique Angles</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">

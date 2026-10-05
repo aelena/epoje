@@ -7,6 +7,7 @@ interface WisdomViewProps {
   selectedIndex: number
   heatLevel: number
   isLoading: boolean
+  error: string | null
   reservoirActive: boolean
   onSliderChange: (index: number) => void
   onMore: () => void
@@ -22,6 +23,7 @@ export default function WisdomView({
   selectedIndex,
   heatLevel,
   isLoading,
+  error,
   reservoirActive,
   onSliderChange,
   onMore,
@@ -43,6 +45,8 @@ export default function WisdomView({
           currentWisdom
         )}
       </div>
+
+      {error && !isLoading && <p className="wisdom-error">{error}</p>}
 
       {currentWisdom && !isLoading && (
         <button className="btn export-btn" onClick={onExport}>

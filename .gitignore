@@ -164,3 +164,10 @@ improvements.md
 
 nul
 nul.txt
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# SQLite usage log (local data, never commit)
+*.db
+*.db-journal

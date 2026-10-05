@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables before other imports
@@ -9,74 +10,93 @@ from sanic.request import Request
 from sanic.response import JSONResponse
 from sanic_cors import CORS
 
-from database import (
-    init_db,
-    create_session,
-    log_interaction,
-    add_to_reservoir,
-    get_reservoir_items,
-    get_reservoir_stats,
-    delete_reservoir_item,
-)
+from database import init_db, create_session, log_interaction
 from llm import generate_wisdoms
+from ratelimit import RateLimiter
 import random
+import logging
+
+logger = logging.getLogger("epoche")
+
+# development: no limits (you pay for your own clicks)
+# production: per-IP and global daily limits, serves the built frontend
+ENV = os.getenv("EPOCHE_ENV", "development").lower()
+IS_PROD = ENV == "production"
 
 app = Sanic("epoche")
 
-# Configure CORS
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
-CORS(app, origins=cors_origins)
+# Behind a reverse proxy (Caddy/nginx) trust its X-Forwarded-For so limits apply per client
+app.config.PROXIES_COUNT = int(os.getenv("PROXIES_COUNT", "1" if IS_PROD else "0"))
+
+limiter = RateLimiter(
+    per_minute=int(os.getenv("RATE_LIMIT_PER_MINUTE", 6)),
+    per_day=int(os.getenv("RATE_LIMIT_PER_DAY", 60)),
+    global_per_day=int(os.getenv("GLOBAL_DAILY_LIMIT", 2000)),
+) if IS_PROD else None
+
+# The frontend uses relative /api URLs (Vite proxy in dev, same origin in prod),
+# so CORS only matters if you host the frontend elsewhere
+cors_origins = [o for o in os.getenv("CORS_ORIGINS", "").split(",") if o]
+if cors_origins:
+    CORS(app, origins=cors_origins)
 
 
 @app.before_server_start
-async def setup_db(app, loop):
+async def setup_db(app):
     """Initialize database on server start."""
     await init_db()
+    logger.info("epoche running in %s mode%s", ENV, " (rate limited)" if limiter else "")
 
 
 @app.post("/api/generate")
 async def generate(request: Request) -> JSONResponse:
     """Generate multiple oblique wisdom phrases."""
-    data = request.json
+    data = request.json or {}
 
-    # Validate required fields
-    situation = data.get("situation", "").strip()
+    situation = str(data.get("situation", "")).strip()
     if not situation:
         return sanic_json({"error": "Situation is required"}, status=400)
 
     if len(situation) > 280:
         return sanic_json({"error": "Situation must be 280 characters or less"}, status=400)
 
-    previous_wisdoms = data.get("previous_wisdoms", [])
+    if limiter:
+        retry_after = limiter.check(request.remote_addr or request.ip)
+        if retry_after:
+            return sanic_json(
+                {"error": "The oracle needs silence. Try again later.", "retry_after": retry_after},
+                status=429,
+                headers={"Retry-After": str(retry_after)},
+            )
+
+    previous_wisdoms = [str(w) for w in (data.get("previous_wisdoms") or [])][-50:]
     action = data.get("action", "initial")
-    temperature = float(data.get("temperature", 0.7))
-    session_id = data.get("session_id", "anonymous")
-    count = int(data.get("count", 5))
+    temperature = max(0.3, min(1.3, float(data.get("temperature", 0.7))))
+    session_id = str(data.get("session_id", "anonymous"))[:64]
+    count = max(1, min(5, int(data.get("count", 5))))
 
-    # Clamp values to valid ranges
-    temperature = max(0.3, min(1.3, temperature))
-    count = max(1, min(5, count))
+    # The reservoir lives in the browser and is sent with each request:
+    # keep only well-formed items, bounded
+    reservoir_items = [
+        {"text": str(item["text"])[:2000]}
+        for item in (data.get("reservoir_items") or [])[:500]
+        if isinstance(item, dict) and item.get("text")
+    ]
 
-    # Create session if first interaction
     if action == "initial":
         await create_session(session_id, situation)
 
     try:
-        # Fetch all reservoir items to check count
-        reservoir_items = await get_reservoir_items(limit=100, random_order=False)
-
         wisdoms = await generate_wisdoms(
             situation=situation,
             previous_wisdoms=previous_wisdoms,
             temperature=temperature,
-            reservoir_items=reservoir_items if reservoir_items else None,
+            reservoir_items=reservoir_items or None,
             count=count,
         )
 
-        # Pick a random initial selection
         selected_index = random.randint(0, len(wisdoms) - 1)
 
-        # Log the interaction
         await log_interaction(
             session_id=session_id,
             action=action,
@@ -89,30 +109,28 @@ async def generate(request: Request) -> JSONResponse:
             "wisdoms": wisdoms,
             "selected_index": selected_index,
             "temperature_used": temperature,
-            "reservoir_active": len(reservoir_items) >= 10 if reservoir_items else False,
+            "reservoir_active": len(reservoir_items) >= 10,
         })
 
-    except Exception as e:
-        return sanic_json({"error": str(e)}, status=500)
+    except Exception:
+        # Log details server-side; don't leak provider errors to clients
+        logger.exception("Generation failed")
+        return sanic_json({"error": "The oracle is silent. Try again."}, status=500)
 
 
 @app.post("/api/log")
 async def log_event(request: Request) -> JSONResponse:
     """Log client-side events."""
-    data = request.json
+    data = request.json or {}
 
-    session_id = data.get("session_id", "anonymous")
+    session_id = str(data.get("session_id", "anonymous"))[:64]
     action = data.get("action")
     event_data = data.get("data", {})
 
     if action not in ("export", "cooldown", "reset"):
         return sanic_json({"error": "Invalid action"}, status=400)
 
-    await log_interaction(
-        session_id=session_id,
-        action=action,
-        data=event_data,
-    )
+    await log_interaction(session_id=session_id, action=action, data=event_data)
 
     return sanic_json({"logged": True})
 
@@ -120,90 +138,24 @@ async def log_event(request: Request) -> JSONResponse:
 @app.get("/api/health")
 async def health(request: Request) -> JSONResponse:
     """Health check endpoint."""
-    return sanic_json({"status": "ok"})
+    return sanic_json({"status": "ok", "env": ENV})
 
 
-# --- Reservoir endpoints ---
-
-@app.post("/api/reservoir")
-async def add_reservoir_item(request: Request) -> JSONResponse:
-    """Add an idea/quote to the reservoir."""
-    data = request.json
-
-    text = data.get("text", "").strip()
-    if not text:
-        return sanic_json({"error": "Text is required"}, status=400)
-
-    if len(text) > 2000:
-        return sanic_json({"error": "Text must be 2000 characters or less"}, status=400)
-
-    source_url = data.get("source_url", "").strip() or None
-    source_title = data.get("source_title", "").strip() or None
-
-    try:
-        item_id = await add_to_reservoir(
-            text=text,
-            source_url=source_url,
-            source_title=source_title,
-        )
-
-        return sanic_json({
-            "id": item_id,
-            "added": True,
-        })
-
-    except Exception as e:
-        return sanic_json({"error": str(e)}, status=500)
-
-
-@app.get("/api/reservoir")
-async def list_reservoir(request: Request) -> JSONResponse:
-    """List items from the reservoir."""
-    limit = int(request.args.get("limit", 50))
-    random_order = request.args.get("random", "false").lower() == "true"
-
-    limit = max(1, min(100, limit))
-
-    try:
-        items = await get_reservoir_items(limit=limit, random_order=random_order)
-        return sanic_json({"items": items})
-
-    except Exception as e:
-        return sanic_json({"error": str(e)}, status=500)
-
-
-@app.get("/api/reservoir/stats")
-async def reservoir_stats(request: Request) -> JSONResponse:
-    """Get reservoir statistics."""
-    try:
-        stats = await get_reservoir_stats()
-        return sanic_json(stats)
-
-    except Exception as e:
-        return sanic_json({"error": str(e)}, status=500)
-
-
-@app.delete("/api/reservoir/<item_id:int>")
-async def remove_reservoir_item(request: Request, item_id: int) -> JSONResponse:
-    """Delete an item from the reservoir."""
-    try:
-        deleted = await delete_reservoir_item(item_id)
-        if deleted:
-            return sanic_json({"deleted": True})
-        else:
-            return sanic_json({"error": "Item not found"}, status=404)
-
-    except Exception as e:
-        return sanic_json({"error": str(e)}, status=500)
+# In production, serve the built frontend (npm run build) from the same process
+DIST = Path(__file__).resolve().parents[2] / "dist"
+if IS_PROD and DIST.is_dir():
+    app.static("/", DIST / "index.html", name="index")
+    app.static("/assets", DIST / "assets", name="assets")
 
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-    debug = os.getenv("DEBUG", "false").lower() == "true"
+    debug = os.getenv("DEBUG", "false").lower() == "true" and not IS_PROD
 
     app.run(
-        host="0.0.0.0",
+        host=os.getenv("HOST", "127.0.0.1" if IS_PROD else "0.0.0.0"),
         port=port,
         debug=debug,
         auto_reload=debug,
+        single_process=True,  # keeps the in-memory rate limiter consistent
     )
