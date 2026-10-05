@@ -15,6 +15,7 @@ from llm import generate_wisdoms
 from ratelimit import RateLimiter
 import random
 import logging
+import openai
 
 logger = logging.getLogger("epoche")
 
@@ -112,10 +113,26 @@ async def generate(request: Request) -> JSONResponse:
             "reservoir_active": len(reservoir_items) >= 10,
         })
 
-    except Exception:
-        # Log details server-side; don't leak provider errors to clients
+    except Exception as e:
+        # Log details server-side; in production don't leak provider errors to clients
         logger.exception("Generation failed")
-        return sanic_json({"error": "The oracle is silent. Try again."}, status=500)
+        message = "The oracle is silent. Try again." if IS_PROD else describe_error(e)
+        return sanic_json({"error": message}, status=500)
+
+
+def describe_error(e: Exception) -> str:
+    """Development-only: say what actually went wrong and how to fix it."""
+    if isinstance(e, openai.AuthenticationError) or (
+        isinstance(e, openai.OpenAIError) and "api_key" in str(e)
+    ):
+        return "[dev] LLM authentication failed: check OPENAI_API_KEY in src/api/.env, then restart the API"
+    if isinstance(e, openai.RateLimitError):
+        return "[dev] OpenAI rate limit or quota exceeded: check billing/limits on your OpenAI account"
+    if isinstance(e, openai.NotFoundError):
+        return f"[dev] OpenAI model not found: check OPENAI_MODEL ({e})"
+    if isinstance(e, openai.APIConnectionError):
+        return "[dev] Could not reach OpenAI: network or proxy problem"
+    return f"[dev] {type(e).__name__}: {e}"
 
 
 @app.post("/api/log")

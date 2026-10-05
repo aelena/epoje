@@ -19,7 +19,11 @@ export function useWisdom() {
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || 'The oracle is silent. Try again.');
+      // No JSON body in dev usually means the Vite proxy couldn't reach the API
+      const fallback = import.meta.env.DEV
+        ? `[dev] API not reachable (HTTP ${response.status}): is \`npm run api\` running on :8000?`
+        : 'The oracle is silent. Try again.';
+      throw new Error(body.error || fallback);
     }
 
     return response.json();
