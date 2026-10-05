@@ -171,3 +171,6 @@ nul.txt
 # SQLite usage log (local data, never commit)
 *.db
 *.db-journal
+
+# Private design notes (kept local)
+_specs/

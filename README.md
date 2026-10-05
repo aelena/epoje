@@ -1,4 +1,16 @@
+```text
+   '                                          /
+  .--.   ________    .--.     \      /   | .--.
+ (         |   |    /    \     \    /    |/    \
+  >--      |   |   |      |     \  /     |      |
+ (         |   |    \    /       \/      |      |
+  '--'     |   \_    '--'        /\      |      |
+                                /  \            |
+```
+
 # epoche — Oblique Angles
+
+*ἐποχή* (epokhé): the suspension of judgement; stepping back so a problem can be seen from another angle.
 
 Describe what's blocking you in ≤280 characters; get back five short, cryptic
 reframes in the spirit of Brian Eno's *Oblique Strategies*, drawn from Stoic,
@@ -51,7 +63,7 @@ monthly budget on the OpenAI account.
 
 ## Roadmap: Spanish (ES) as an alternate language
 
-The project started in Spanish ("Ángulos Oblicuos", see `_specs/designdoc.md`)
+The project started in Spanish ("Ángulos Oblicuos")
 and was switched to English; ES should come back as a choice, not a fork.
 Plan, when picked up:
 
@@ -62,7 +74,7 @@ Plan, when picked up:
   (same pattern as `useTheme.ts`). Set `<html lang>` accordingly.
 - **Oracle language**: send `lang` with `/api/generate`; in `src/api/llm.py`
   either keep the English system prompt and add "Respond in Spanish", or keep a
-  hand-written Spanish prompt (the original in the design doc). Test both: the
+  hand-written Spanish prompt (the original Spanish prompt from the first design). Test both: the
   aphoristic tone is the product, so a native prompt is probably worth it.
   Server-side fallbacks/errors in `server.py` need ES too.
 - **Mixed situations**: if the user writes in Spanish with the UI in English,
@@ -73,4 +85,3 @@ Plan, when picked up:
   "save" (→ "guardar"), the 280-char placeholder "What's blocking you?"
   (→ "¿Qué te bloquea?").
 
-Design intent lives in `_specs/designdoc.md`.
