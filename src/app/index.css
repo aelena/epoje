@@ -322,6 +322,20 @@ body::before {
   cursor: not-allowed;
 }
 
+/* Drop cools, flame heats: muted at rest, full colour on hover */
+.control-cool { color: #7f9bb5; }
+.control-heat { color: #c39268; }
+
+.control-cool:hover:not(:disabled) {
+  color: #3e7ec4;
+  border-color: #3e7ec4;
+}
+
+.control-heat:hover:not(:disabled) {
+  color: #e27020;
+  border-color: #e27020;
+}
+
 /* History dots */
 .history-dots {
   display: flex;
